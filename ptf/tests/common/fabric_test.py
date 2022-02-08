@@ -12,6 +12,8 @@ import time
 import gnmi_utils
 import xnt
 from base_test import (
+    PORT_SIZE_BITS,
+    PORT_SIZE_BYTES,
     P4RuntimeTest,
     ipv4_to_binary,
     is_tna,
@@ -19,8 +21,6 @@ from base_test import (
     mac_to_binary,
     stringify,
     tvcreate,
-    PORT_SIZE_BYTES,
-    PORT_SIZE_BITS,
 )
 from bmd_bytes import BMD_BYTES
 from p4.v1 import p4runtime_pb2
@@ -899,8 +899,8 @@ class FabricTest(P4RuntimeTest):
             self.sdn_to_sdk_port = self.build_sdn_to_sdk_port_map_from_gnmi()
 
         # Common SDN ports
-        self.sdn_to_sdk_port[0xFFFFFF00] = 0x44   # Recirculate port for pipe 0
-        self.sdn_to_sdk_port[0xFFFFFF01] = 0xC4   # Recirculate port for pipe 1
+        self.sdn_to_sdk_port[0xFFFFFF00] = 0x44  # Recirculate port for pipe 0
+        self.sdn_to_sdk_port[0xFFFFFF01] = 0xC4  # Recirculate port for pipe 1
         self.sdn_to_sdk_port[0xFFFFFF02] = 0x144  # Recirculate port for pipe 2
         self.sdn_to_sdk_port[0xFFFFFF03] = 0x1C4  # Recirculate port for pipe 3
 
@@ -925,12 +925,14 @@ class FabricTest(P4RuntimeTest):
         resp = gnmi_utils.do_get(req)
         for notification in resp.notification:
             port_id = notification.update[0].val.uint_val
-            name = notification.update[0].path.elem[1].key['name']
+            name = notification.update[0].path.elem[1].key["name"]
             port_name_to_id[name] = port_id
-        req = gnmi_utils.build_gnmi_get_req("/interfaces/interface[name=*]/state/ifindex")
+        req = gnmi_utils.build_gnmi_get_req(
+            "/interfaces/interface[name=*]/state/ifindex"
+        )
         resp = gnmi_utils.do_get(req)
         for notification in resp.notification:
-            name = notification.update[0].path.elem[1].key['name']
+            name = notification.update[0].path.elem[1].key["name"]
             sdk_id = notification.update[0].val.uint_val
             port_id = port_name_to_id[name]
             port_map[port_id] = sdk_id
@@ -1291,9 +1293,7 @@ class FabricTest(P4RuntimeTest):
             priority,
         )
 
-    def read_forwarding_acl_set_output_port(
-      self, priority=DEFAULT_PRIORITY, **matches
-    ):
+    def read_forwarding_acl_set_output_port(self, priority=DEFAULT_PRIORITY, **matches):
         matches = self.build_acl_matches(**matches)
         return self.read_table_entry("acl.acl", matches, priority)
 
@@ -1318,7 +1318,7 @@ class FabricTest(P4RuntimeTest):
     def add_forwarding_acl_drop_ingress_port(self, ingress_port):
 
         ingress_port_ = stringify(ingress_port, PORT_SIZE_BYTES)
-        ingress_port_mask_ = stringify(2**PORT_SIZE_BITS - 1, PORT_SIZE_BYTES)
+        ingress_port_mask_ = stringify(2 ** PORT_SIZE_BITS - 1, PORT_SIZE_BYTES)
         self.send_request_add_entry_to_action(
             "acl.acl",
             [self.Ternary("ig_port", ingress_port_, ingress_port_mask_)],
@@ -1385,7 +1385,7 @@ class FabricTest(P4RuntimeTest):
             matches.append(self.Ternary("l4_dport", l4_dport_, l4_dport_mask))
         if ig_port is not None:
             ig_port_ = stringify(ig_port, PORT_SIZE_BYTES)
-            ig_port_mask = stringify(2**PORT_SIZE_BITS - 1, PORT_SIZE_BYTES)
+            ig_port_mask = stringify(2 ** PORT_SIZE_BITS - 1, PORT_SIZE_BYTES)
             matches.append(self.Ternary("ig_port", ig_port_, ig_port_mask))
         return matches
 
@@ -4149,13 +4149,19 @@ class IntTest(IPv4UnicastTest):
         self.set_up_latency_threshold_for_q_report(threshold_trigger, threshold_reset)
         # Sets the quota for the output port/queue of INT report to zero to make sure
         # we won't keep getting reports for this type of packet.
-        self.set_queue_report_quota(port=self.sdn_to_sdk_port[self.port3], qid=0, quota=0)
+        self.set_queue_report_quota(
+            port=self.sdn_to_sdk_port[self.port3], qid=0, quota=0
+        )
         recirc_ports = RECIRCULATE_PORTS if is_tna() else RECIRCULATE_PORT_V1MODEL
         for recirc_port in recirc_ports:
-            self.set_queue_report_quota(port=self.sdn_to_sdk_port[recirc_port], qid=0, quota=0)
+            self.set_queue_report_quota(
+                port=self.sdn_to_sdk_port[recirc_port], qid=0, quota=0
+            )
         if reset_quota:
             # To ensure we have enough quota to send a queue report.
-            self.set_queue_report_quota(port=self.sdn_to_sdk_port[eg_port], qid=0, quota=1)
+            self.set_queue_report_quota(
+                port=self.sdn_to_sdk_port[eg_port], qid=0, quota=1
+            )
 
         # TODO: Use MPLS test instead of IPv4 test if device is spine.
         # TODO: In these tests, there is only one egress port although the
